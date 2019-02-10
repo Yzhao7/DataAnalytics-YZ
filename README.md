@@ -2,9 +2,10 @@
 This repository is a collection of code and figures used in the final project.
 
 ## Data Description
--Dataset Name
--Source
--Number of rows and columns
+-Gapminder
+-Online
+-Number of rows: 41284
+ Number of columns :6
 
 ##Analysis
 TO DO
