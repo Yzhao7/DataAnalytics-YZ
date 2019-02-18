@@ -1,0 +1,764 @@
+---
+title: "Code Profile"
+author: "YIFAN ZHAO"
+date: "February 14, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r Week 5}
+library(tidyverse)
+
+heights <- read_csv("data/heights.csv")
+
+## 
+read_csv("a,b,c
+1,2,3
+4,5,6")
+
+## using skip = n to skip the first n lines of the data frame
+read_csv("The first line of metadata
+  The second line of metadata
+  x,y,z
+  1,2,3", skip = 2)
+
+## using comment = # to frop all lines start with # or other symbols
+read_csv("# A comment I want to skip
+  x,y,z
+  1,2,3", comment = "#")
+## use col_name = FALSE to tell R not to treat the first row as headings, instead to label them from X1 to Xn
+## \n is a convenient way to seperate rows
+read_csv("1,2,3\n4,5,6", col_names = FALSE)
+
+## passing the column headings using col_names=
+read_csv("1,2,3\n4,5,6", col_names=c("x","y","z"))
+
+## Another option that commonly needs tweaking is na: this specifies the value (or values) that are used to represent missing values in your file:
+
+read_csv("a,b,c\n1,2,.", na = ".")
+
+## Function parse_*() takes a character vector and return a more specialised vector like a logical, integer, or date, see following examples:
+str(parse_logical(c("TRUE", "FALSE", "NA")))
+str(parse_integer(c("1", "2", "3")))
+str(parse_date(c("2018-04-01", "1965-03-01")))
+
+## na= argument specifies which strings should be treat as missing
+parse_integer(c("1", "231", ".", "456"), na = ".")
+
+## if parsing fails, you will receive a warning, and the failure will be missing in the output;use problems() to get the complete failure set.
+x <- parse_integer(c("123", "345", "abc", "123.45"))
+x
+problems(x)
+
+### Parsers
+## 1.Parsing numbers
+
+parse_double("1.23")
+# the most important part in a number is the decimal place, but decimal place can be parsed by different symbols around the world, so it is good to use locale = Argument to specify which symbol in the number represents the decimal place. E.g.
+parse_double("1,23", locale = locale(decimal_mark = ","))
+
+# parse_number ignores any non-numeric characters before and after the number so this will help with the folowing number formats:
+parse_number("$100")
+parse_number("20%")
+parse_number("It cost $123.45")
+
+# Numbers often contain "grouping" characters to make them easier to read, like "1,000,000", and these grouping characters vary around the world
+#use argument grouping_mark="" to group numbers and ignore grouping marks, e.g.:
+parse_number("$123,456,789")
+# Used in many parts of Europe
+parse_number("123.789.456", locale = locale(grouping_mark = "."))
+# Used in Switzerland
+parse_number("123'789'456", locale = locale(grouping_mark = "'"))
+## the above 3 coding returned the same results
+
+## 2.Parsing Strings
+
+# In R, we can get at the underlying representation of a string using charToRaw()
+charToRaw("Esther")
+# Each hexadecimal number represents a byte of information
+
+# there is some problem if not specify the encoding
+x1 <- "El Ni\xf1o was particularly bad this year"
+x2 <- "\x82\xb1\x82\xf1\x82\xc9\x82\xbf\x82\xcd"
+
+# in order to avoid the errors, specify encoding using local=locale() argument
+parse_character(x1, locale = locale(encoding = "Latin1"))
+parse_character(x2, locale = locale(encoding = "Shift-JIS"))
+
+# but sometimes it is hard to know the correct encoding unless that piece of info is included in the file, but if not use guess_encoding() to find the correct one
+guess_encoding(charToRaw(x1))
+guess_encoding(charToRaw(x2))
+
+## 3. Parsing factors
+# R use factors to represetn categorical variables that have a known set of possible values, when there is an unexpected value, it will generate a warning, e.g.:
+fruit <- c("apple", "banana")
+parse_factor(c("apple", "banana", "bananana"), levels = fruit)
+# bananana is an unexpected value
+
+## 4. Parsing date, date-time, time
+# a date (the number of days since 1970-01-01) 
+# a date-time (the number of seconds since midnight 1970-01-01)
+# a time (the number of seconds since midnight)
+
+#parse date-time
+parse_datetime("2018-10-01T2110")
+parse_datetime("20181010")
+
+#parse time
+library(hms)
+parse_time("08:15 pm")
+parse_time("23:59:59")
+
+#parse date
+parse_date("02/03/16", "%m/%d/%y")
+parse_date("02/03/16", "%d/%m/%y")
+parse_date("02/03/16", "%y/%m/%d")
+
+# practice
+d1 <- "January 1, 2010"
+d2 <- "2015-Mar-07"
+d3 <- "06-Jun-2017"
+d4 <- c("August 19 (2015)", "July 1 (2015)")
+d5 <- "12/30/14" # Dec 30, 2014
+t1 <- "1705"
+t2 <- "11:15:10.12 PM"
+
+parse_date(d1,"%B %d, %Y")
+# Pay close attention to the data format, using %m instead of %B will return error, using %y instead of %Y will return error as well.
+parse_date(d2,"%Y-%b-%d")
+parse_date(d3,"%d-%b-%Y")
+parse_date(d4,"%B %d (%Y)")
+parse_date(d5,"%m/%d/%y")
+parse_time(t2)
+
+## Data format
+# Year
+# %Y (4 digits).
+# %y (2 digits); 00-69 -> 2000-2069, 70-99 -> 1970-1999.
+
+# Month
+# %m (2 digits).
+# %b (abbreviated name, like "Jan").
+# %B (full name, "January").
+# Day
+# %d (2 digits).
+# %e (optional leading space).
+
+#Time
+# %H 0-23 hour.
+# %I 0-12, must be used with %p.
+# %p AM/PM indicator.
+# %M minutes.
+# %S integer seconds.
+# %OS real seconds.
+# %Z Time zone (as name, e.g. America/Chicago). Beware of abbreviations: if you're American, note that "EST" is a Canadian time zone that does not have daylight savings time. It is not Eastern Standard Time! We'll come back to this time zones.
+# %z (as offset from UTC, e.g. +0800).
+
+#Non-digits
+# %. skips one non-digit character.
+# %* skips any number of non-digits.
+
+## Parsing a File
+
+# use guess_parser() to guess the type of each column and use parse_guess() to parse the column based on the guess
+guess_parser("2019-02-01")
+guess_parser("22:03")
+guess_parser(c("TRUE", "FALSE"))
+guess_parser(c("3", "7", "8"))
+guess_parser(c("12,352,561"))
+
+str(parse_guess("2010-10-10"))
+
+# There are problems with using the above method to determine the column types, CSV 'challenge' in R illustrate 2 possible problems with using above guessing method:
+challenge <- read_csv(readr_example("challenge.csv"))
+
+# check the parsing errors with problems()
+problems(challenge)
+
+# A good strategy is to work column by column until there are no problems remaining.
+challenge <- read_csv(
+  readr_example("challenge.csv"), 
+  col_types = cols(
+    x = col_integer(),
+    y = col_character()
+  )
+)
+
+#Tweak the type of the x column:
+
+challenge <- read_csv(
+  readr_example("challenge.csv"), 
+  col_types = cols(
+    x = col_double(),
+    y = col_character()
+  )
+)
+
+# by looking at the last few rows of the data frame, we can see the date is stored in a character vector, fixing this problem by specifying y is a date column.
+tail(challenge)
+challenge <- read_csv(
+  readr_example("challenge.csv"), 
+  col_types = cols(
+    x = col_double(),
+    y = col_date()
+  )
+)
+tail(challenge)
+
+# because normally parsing just reads the first 1000 rows and uses some heuristics to figure out the type of each column, in the 'challenge' CSV, if look at one more row, then the parsing will be effective.
+challenge2 <- read_csv(readr_example("challenge.csv"), guess_max = 1001)
+challenge2
+
+# it is easier to just read everything as characters
+challenge2 <- read_csv(readr_example("challenge.csv"), 
+  col_types = cols(.default = col_character())
+)
+
+# type_convert() function applies the parsing heuristics to the character columns in a data frame
+df <- tribble(
+  ~x,  ~y,
+  "1", "1.21",
+  "2", "2.32",
+  "3", "4.56"
+)
+
+df
+type_convert(df)
+
+## Writing to a File
+write_csv(challenge, "challenge.csv")
+
+
+
+```
+
+```{r Week 6}
+## scalars only have magnitude, but vectors have both magnitude and direction
+
+## vectors
+## three ways to create vectors:
+## 1.  c()
+## 2. seq()
+## 3. rep()
+
+c(1,3,5,7,9)
+seq(from=1, to=4, by=1)
+rep("A",time=10)
+
+## lists
+list(42, "Hi", TRUE)
+
+## matrices
+## using matrix()
+x<- matrix(1:12,nrow=3, ncol = 4)
+ ## extract elements in the matrix
+x[1,2]
+x[2,]
+x[,3]
+## using cbind()
+cbind(c(1, 2, 3, 4, 5),
+      c("a", "b", "c", "d", "e"))
+
+## data.frame() is a list of SAME-length vectors
+survey<-data.frame("index" = c(1,2,3,4,5),
+                   "age"=c(23,35,58,61,33),
+                   "sex"=c("male","female","male","female","female"))
+survey
+str(survey)
+
+## 'sex' is a string factor when running str() 
+
+## create a data.frame without string factors, because string factors can cause problems later!
+
+survey<-data.frame("index" = c(1,2,3,4,5),
+                   "age"=c(23,35,58,61,33),
+                   "sex"=c("male","female","male","female","female"),
+                   stringsAsFactors = FALSE)
+survey
+str(survey)
+
+# head() shows the first few rows, ChickenWeight is a pre-loaded data.frame in R
+head(ChickWeight)
+# tail() shows he last few rows
+tail(ChickWeight)
+# View() opens the entire dataframe in a new window
+View(ChickWeight)
+
+# Print summary statistics of ToothGrowth to the console; ToothGrowth is another pre-loaded data.frame in R
+summary(ToothGrowth)
+
+# Print additional information about pre-loaded data.frame ToothGrowth to the console
+str(ToothGrowth)
+
+# print COLUMN names of the data.frame
+names(ToothGrowth)
+
+# return a specific column named 'len' in data.frame ToothGrowth
+ToothGrowth$len
+
+# mean of column len
+mean(ToothGrowth$len)
+
+# calculate and give a table of the frequency of column supp in ToothGrowth
+table(ToothGrowth$supp)
+
+# Give me the len AND supp columns of ToothGrowth
+head(ToothGrowth[c("len", "supp")])
+
+# Create a new dataframe called survey
+survey <- data.frame("index" = c(1, 2, 3, 4, 5),
+                     "age" = c(24, 25, 42, 56, 22))
+# Add a new column called sex to survey
+survey$sex <- c("m", "m", "f", "f", "m")
+## see the result
+survey
+
+# Change the name of the first column of survey to "participant.number", this is using names()function, indexing, and assignment
+names(survey)[1] <- "participant.number"
+
+# Change the column name from age to age.years using a longical vector to avoid errors.
+names(survey)[names(survey) == "age"] <- "years"
+survey
+
+### Slicing with [,]
+
+# Give me the rows 1-6 and column 1 of ToothGrowth
+ToothGrowth[1:6, 1]
+
+# Give me rows 1-3 and columns 1 and 3 of ToothGrowth
+ToothGrowth[1:3, c(1,3)]
+
+# Give me the 2nd column (and all rows) of ToothGrowth
+ToothGrowth[, 2]
+
+
+## Slicing with logical vectors
+# Create a new df with only the rows of ToothGrowth
+#  where supp equals VC
+ToothGrowth.VC <- ToothGrowth[ToothGrowth$supp == "VC", ]
+
+# Create a new df with only the rows of ToothGrowth
+#  where supp equals OJ and dose < 1
+
+ToothGrowth.OJ.a <- ToothGrowth[ToothGrowth$supp == "OJ" &
+                                ToothGrowth$dose < 1, ]
+
+## Slicing with subset()
+# in subset() function
+# x: A dataframe you want to subset
+# subset: A logical vector indicating the rows to keep
+# select: The columns you want to keep
+# Get rows of ToothGrowth where len < 20 AND supp == "OJ" AND dose >= 1
+subset(x = ToothGrowth,
+      subset = len < 20 &
+               supp == "OJ" &
+               dose >= 1)
+
+# Get rows of ToothGrowth where len > 30 AND supp == "VC", but only return the len and dose columns
+subset(x = ToothGrowth,
+    subset = len > 30 & supp == "VC",
+    select = c(len, dose))
+
+### What is the mean tooth length of Guinea pigs given OJ?
+
+# Step 1: Create a subsettted dataframe called oj
+
+oj <- subset(x = ToothGrowth,
+             subset = supp == "OJ")
+
+# Step 2: Calculate the mean of the len column from
+#  the new subsetted dataset
+
+mean(oj$len)
+
+
+## using logical indexing to get the same results:
+
+# Step 1: Create a subsettted dataframe called oj
+oj <- ToothGrowth[ToothGrowth$supp == "OJ",]
+
+# Step 2: Calculate the mean of the len column from
+#  the new subsetted dataset
+mean(oj$len)
+
+## Get the same result using just one line:
+mean(ToothGrowth$len[ToothGrowth$supp=="OJ"])
+
+### Using with() function to save typing when using multiple columns from the same data frame.
+# e.g. create a data frame for health info and calculate the bmi, which = weight/height^2
+health <- data.frame("age" = c(45, 35, 27, 19, 43),
+                     "height" = c(1.88, 1.78, 1.87, 1.62, 1.80),
+                     "weight" = c(69, 70, 62, 79, 75))
+# if not using with() to calculate bmi
+bmi<- health$weight/health$height^2
+bmi
+
+# using with() to save typing
+
+bmi<-with(health, weight/height^2)
+bmi
+
+## we get the same results
+```
+
+```{r Week 7 Data Transformation}
+### Explore data manipulation with 'dplyr' package
+
+library(nycflights13)
+library(tidyverse)
+
+flights
+## use View() to view data frame better in a new window
+View(flights)
+
+## The 'flight' dataset is slightly dfferent than other database as it is a Tibble, which is set to work better in tidyverse
+## different types of variables:
+# int stands for integers.
+# dbl stands for doubles, or real numbers.
+# chr stands for character vectors, or strings.
+# dttm stands for date-times (a date + a time).
+# lgl stands for logical, vectors that contain only TRUE or FALSE.
+# fctr stands for factors, which R uses to represent categorical variables with fixed possible values.
+# date stands for dates.
+
+## 1.Filter ROWS with filter()
+filter(flights, month == 1)
+# make sure to use == to test for equality
+filter(flights,month==11 & month==12)
+# use x %in% y to avoid typing 'month' twice in the above coding
+nov_dec <- filter(flights, month %in% c(11, 12))
+
+# De Morgan's law: !(x & y) is the same as !x | !y, and !(x | y) is the same as !x & !y
+# use the above law to find all the flights that weren't delayed (on arrival or departure) by more than three hours
+filter(flights, !(arr_delay > 180 | dep_delay > 180))
+filter(flights, arr_delay <= 180, dep_delay <= 180)
+
+# Missing values NA can be contagious as any operations with missing values will result missing values
+# use is.na() to determine if a value is missing
+x <- NA
+is.na(x)
+
+# filter() only includes rows where the condition is TRUE; it excludes both FALSE and NA values. If you want to preserve missing values, ask for them explicitly, e.g.:
+
+df <- tibble(x = c(1, NA, 3))
+filter(df, x > 1)
+filter(df, is.na(x) | x > 1)
+
+## 2. Arrange ROWS with arrange()
+# arrange() works similar to filter(), except it also changes the row orders
+arrange(flights, day, month, year)
+# use desc() to reorder the rows by colmn dep-delay in descending order
+arrange(flights, desc(dep_delay))
+df <- tibble(x = c(5, 2, NA))
+arrange(df, x)
+
+# look at the below example and see missing value is always sorted at the end
+df <- tibble(x = c(1, 2, 3, 4, NA))
+arrange(df, x)
+arrange(df, desc(x))
+
+## 3. Select COLUMNS with select()
+select(flights, year, month, day)
+# select all columns between year and day
+select(flights, year:day)
+# select all columns except those between year and day
+select(flights, -(year:day))
+
+# use everything() to move a handful of variables to the start of the data frame, e.g. move time_hour and air_time to the beginning of the data frame
+select(flights, time_hour, air_time, everything())
+
+## 4. Add new variables with mutate()
+# mutate() always add columns to the end of the data frame
+flights_sml <- select(flights, 
+  year:day, 
+  ends_with("delay"), 
+  distance, 
+  air_time
+)
+View(flights_sml)
+# use mutate() to add column 'gain' and 'distance'
+mutate(flights_sml,
+  gain = dep_delay - arr_delay,
+  speed = distance / air_time * 60
+)
+
+# use transmute() to only keep the new variables, 
+transmute(flights,
+  gain = dep_delay - arr_delay,
+  hours = air_time / 60,
+  gain_per_hour = gain / hours
+)
+
+## 5. Grouped summaries with summarise()
+# summarise collapse all the data frame to one row
+summarise(flights, delay = mean(dep_delay, na.rm = TRUE)) 
+
+# summarise is more powerful in combination with group_by()
+by_day <- group_by(flights, year, month, day)
+summarise(by_day, delay = mean(dep_delay, na.rm = TRUE))
+
+# to explore relationship between distance and average delay for each location, we need to do the following:
+by_dest <- group_by(flights, dest)
+delay <- summarise(by_dest,
+  count = n(),
+  dist = mean(distance, na.rm = TRUE),
+  delay = mean(arr_delay, na.rm = TRUE)
+)
+delay <- filter(delay, count > 20, dest != "HNL")
+View(delay)
+
+# plot distance against delay and explore the relationship on a plot
+ggplot(data = delay, mapping = aes(x = dist, y = delay)) +
+  geom_point(aes(size = count), alpha = 1/3) +
+  geom_smooth(se = FALSE)
+
+#looks like the two oberserving variable has a positive relationship when distance < 500, but have a negative relationship when distance is greater than 500
+
+# There are three steps to prepare this data:
+# Group flights by destination.
+# Summarise to compute distance, average delay, and number of flights.
+# Filter to remove noisy points and Honolulu airport, which is almost twice as far away as the next closest airport.
+# It is frustrating to write the code because one has to give each intermediate variable a name even if they are useless, another way to tackle the problem is to use pipe: %>%
+
+delays <- flights %>% 
+  group_by(dest) %>% 
+  summarise(
+    count = n(),
+    dist = mean(distance, na.rm = TRUE),
+    delay = mean(arr_delay, na.rm = TRUE)
+  ) %>% 
+  filter(count > 20, dest != "HNL")
+
+```
+```{r Week 9 Exploratory Data Analysis}
+library(tidyverse)
+
+# EDA is not a formal process with strict set of rules, rather, the goal during EDA is to develop a better understanding of your data
+
+#EDA is an iterative cycle, in this cycle, there are three steps:
+# 1. Generate questions about your data.
+# 2. Search for answers by visualising, transforming, and modelling your data.
+# 3. Use what you learn to refine your questions and/or generate new questions.
+
+# EDA is an important part of any data analysis, even if the questions are handed to you on a platter, because you always need to investigate the quality of your data. Data cleaning is just one application of EDA: you ask questions about whether your data meets your expectations or not. 
+# To do data cleaning, you'll need to deploy all the tools of EDA: visualisation, transformation, and modelling.
+
+# EDA is fundamentally a creative process. And like most creative processes, the key to asking quality questions is to generate a large quantity of questions.
+
+# It is difficult to ask revealing questions at the start of your analysis because you do not know what insights are contained in your dataset. 
+# On the other hand, each new question that you ask will expose you to a new aspect of your data and increase your chance of making a discovery (This is like the game we play to have people guess what word is in your mind! You narrow down the answer with each question you ask)
+
+# There is no rule about which questions you should ask to guide your research. However, two types of questions will always be useful for making discoveries within your data. You can loosely word these questions as:
+
+# What type of variation occurs within my variables?
+# What type of covariation occurs between my variables?
+
+# 1. Visualizing distributions:
+# How you visualise the distribution of a variable will depend on whether the variable is categorical or continuous. A variable is categorical if it can only take one of a small set of values. In R, categorical variables are usually saved as factors or character vectors. To examine the distribution of a categorical variable, use a bar chart:
+
+ggplot(data = diamonds) +
+  geom_bar(mapping = aes(x = cut))
+
+# compute these values manually with dplyr::count()
+# see how many observations in each category:
+diamonds %>% 
+  count(cut)
+
+# A variable is continuous if it can take any of an infinite set of ordered values. Numbers and date-times are two examples of continuous variables. To examine the distribution of a continuous variable, use a histogram:
+ggplot(data = diamonds) +
+  geom_histogram(mapping = aes(x = carat), binwidth = 0.5)
+
+# You can compute this by hand by combining dplyr::count() and ggplot2::cut_width():
+diamonds %>% 
+  count(cut_width(carat, 1.0))
+
+#You can set the width of the intervals in a histogram with the binwidth argument, which is measured in the units of the x variable. 
+# You should always explore a variety of binwidths when working with histograms, as different binwidths can reveal different patterns. For example, here is how the graph above looks when we zoom into just the diamonds with a size of less than three carats and choose a smaller binwidth.
+smaller <- diamonds %>% 
+  filter(carat < 3)
+# set a small binwidth to take a closer look
+ggplot(data = smaller, mapping = aes(x = carat)) +
+  geom_histogram(binwidth = 0.1)
+
+
+#Using geom_freqpoly to overlay multiple histograms in the same plot instead of using geom_histogram(), because the first gives lines and makes it easier to compare
+ggplot(data = smaller, mapping = aes(x = carat, colour = cut)) +
+  geom_freqpoly(binwidth = 0.1)
+
+#the following histogram with smaller binwidth value reveals there are subgroups in the data
+ggplot(data = smaller, mapping = aes(x = carat)) +
+  geom_histogram(binwidth = 0.01)
+
+#The following graph shows the eruption of Old Faithful Geyser in Yellowstone National Park with an interval of 0.5
+ggplot(data = faithful, mapping = aes(x = eruptions)) + 
+  geom_histogram(binwidth = 0.5)
+
+#Outliers will show when there is unusually wide limits on the x-axis (it can't be seen as they are too small):
+ggplot(diamonds) + 
+  geom_histogram(mapping = aes(x = y), binwidth = 0.5)
+
+#zoom in to see the outliers using coord_cartesian()
+ggplot(diamonds) + 
+  geom_histogram(mapping = aes(x = y), binwidth = 0.5) +
+  coord_cartesian(ylim = c(0, 50))
+
+#Pluck them out with dplyr
+unusual <- diamonds %>% 
+  filter(y < 3 | y > 20) %>% 
+  select(price, x, y, z) %>%
+  arrange(y)
+unusual
+
+#Moving missing values by removing the entire row:
+diamonds2 <- diamonds %>% 
+  filter(between(y, 3, 20))
+
+#Better to replace the missing value with NA
+diamonds2 <- diamonds %>% 
+  mutate(y = ifelse(y < 3 | y > 20, NA, y))
+
+#ggplot2 doesn't include them in the plot, but it does warn that they've been removed, suppress the warning by setting na.rm = TRUE
+ggplot(data = diamonds2, mapping = aes(x = x, y = y)) + 
+  geom_point()
+ggplot(data = diamonds2, mapping = aes(x = x, y = y)) + 
+  geom_point(na.rm = TRUE)
+
+#ou might want to compare the scheduled departure times for cancelled and non-cancelled times. You can do this by making a new variable with is.na()
+nycflights13::flights %>% 
+  mutate(
+    cancelled = is.na(dep_time),
+    sched_hour = sched_dep_time %/% 100,
+    sched_min = sched_dep_time %% 100,
+    sched_dep_time = sched_hour + sched_min / 60
+  ) %>% 
+  ggplot(mapping = aes(sched_dep_time)) + 
+    geom_freqpoly(mapping = aes(colour = cancelled), binwidth = 1/4)
+
+# explore how the price of a diamond varies with its quality:
+ggplot(data = diamonds, mapping = aes(x = price)) + 
+  geom_freqpoly(mapping = aes(colour = cut), binwidth = 500)
+
+#It's hard to see the difference in distribution because the overall counts differ so much:
+ggplot(diamonds) + 
+  geom_bar(mapping = aes(x = cut))
+
+#To make the comparison easier we need to swap what is displayed on the y-axis. Instead of displaying count, we'll display density, which is the count standardised so that the area under each frequency polygon is one.
+ggplot(data = diamonds, mapping = aes(x = price, y = ..density..)) + 
+  geom_freqpoly(mapping = aes(colour = cut), binwidth = 500)
+
+#Take a look at the distribution of price by cut using geom_boxplot():
+ggplot(data = diamonds, mapping = aes(x = cut, y = price)) +
+  geom_boxplot()
+
+#Explore how highway mileage varies across classes:
+ggplot(data = mpg, mapping = aes(x = class, y = hwy)) +
+  geom_boxplot()
+
+#Reorder class based on the median value of hwy to make the trend easier to see:
+ggplot(data = mpg) +
+  geom_boxplot(mapping = aes(x = reorder(class, hwy, FUN = median), y = hwy))
+
+#Use coord_flip() to flip the boxplot by 90 degrees
+ggplot(data = mpg) +
+  geom_boxplot(mapping = aes(x = reorder(class, hwy, FUN = median), y = hwy)) +
+  coord_flip()
+
+# Count the number of observations for each combination
+ggplot(data = diamonds) +
+  geom_count(mapping = aes(x = cut, y = color))
+
+# Compute the count with dplyr
+diamonds %>% 
+  count(color, cut)
+
+#Then visualise with geom_tile() and the fill aesthetic
+diamonds %>% 
+  count(color, cut) %>%  
+  ggplot(mapping = aes(x = color, y = cut)) +
+    geom_tile(mapping = aes(fill = n))
+
+# See an exponential relationship between the carat size and price of a diamond
+ggplot(data = diamonds) +
+  geom_point(mapping = aes(x = carat, y = price))
+
+# Using the alpha aesthetic to add transparency
+ggplot(data = diamonds) + 
+  geom_point(mapping = aes(x = carat, y = price), alpha = 1 / 50)
+
+#Geom_bin2d() and geom_hex() divide the coordinate plane into 2d bins and then use a fill color to display how many points fall into each bin
+ggplot(data = smaller) +
+  geom_bin2d(mapping = aes(x = carat, y = price))
+
+library(hexbin)
+ggplot(data = smaller) +
+  geom_hex(mapping = aes(x = carat, y = price))
+
+# Bin carat and then for each group, display a boxplot
+ggplot(data = smaller, mapping = aes(x = carat, y = price)) + 
+  geom_boxplot(mapping = aes(group = cut_width(carat, 0.1)))
+
+# Display approximately the same number of points in each bin. That's the job of cut_number()
+ggplot(data = smaller, mapping = aes(x = carat, y = price)) + 
+  geom_boxplot(mapping = aes(group = cut_number(carat, 20)))
+
+```
+```{r Week 12 K-means Clustering Analysis}
+# To perform a cluster analysis in R, generally, the data should be prepared as follows:
+
+# Rows are observations (individuals) and columns are variables
+# Any missing value in the data must be removed or estimated.
+# The data must be standardized (i.e., scaled) to make variables comparable. Recall that, standardization consists of transforming the variables such that they have mean zero and standard deviation one.1
+
+# use the built-in R dataset USArrests
+df <- USArrests
+
+# remove missing value
+df <- na.omit(df)
+
+# scaling/standardizing the data using the R function scale
+df <- scale(df)
+head(df)
+
+# 
+library(factoextra)
+distance <- get_dist(df)
+fviz_dist(distance, gradient = list(low = "#00AFBB", mid = "white", high = "#FC4E07"))
+
+# Compute K means in R using kmeans() function
+k2 <- kmeans(df, centers = 2, nstart = 25)
+str(k2)
+k2
+
+# View results by using fviz_cluster
+fviz_cluster(k2, data = df)
+
+# Use standard pairwise scatter plots to illustrate the clusters compared to the original variables.
+df %>%
+  as_tibble() %>%
+  mutate(cluster = k2$cluster,
+         state = row.names(USArrests)) %>%
+  ggplot(aes(UrbanPop, Murder, color = factor(cluster), label = state)) +
+  geom_text()
+
+# Because the number of clusters (k) must be set before we start the algorithm, it is often advantageous to use several different values of k and examine the differences in the results.
+
+k3 <- kmeans(df, centers = 3, nstart = 25)
+k4 <- kmeans(df, centers = 4, nstart = 25)
+k5 <- kmeans(df, centers = 5, nstart = 25)
+
+# plots to compare
+p1 <- fviz_cluster(k2, geom = "point", data = df) + ggtitle("k = 2")
+p2 <- fviz_cluster(k3, geom = "point",  data = df) + ggtitle("k = 3")
+p3 <- fviz_cluster(k4, geom = "point",  data = df) + ggtitle("k = 4")
+p4 <- fviz_cluster(k5, geom = "point",  data = df) + ggtitle("k = 5")
+
+library(gridExtra)
+grid.arrange(p1, p2, p3, p4, nrow = 2)
+
+
+
+```
