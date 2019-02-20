@@ -4,7 +4,7 @@ author: "YIFAN ZHAO"
 date: "February 18, 2019"
 output: html_document
 ---
-
+Link to github project: https://github.com/Yzhao7/DataAnalytics-YZ/tree/master/project
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
 ```
