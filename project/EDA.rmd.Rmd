@@ -1,0 +1,75 @@
+---
+title: "EDA Assignment"
+author: "YIFAN ZHAO"
+date: "February 18, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE)
+```
+1. Setup the question
+Refine the problem, the following questions reflect the process of refining the question:
+1) How does variable 'price' related to the parameters of bike vendors?
+2) The variable 'price' has a negative relationship with the parameters of each bike vendor
+3) Does vairable 'price' has a negative relationship with the parameters of each bike vendor? 
+*4) Does variable 'price' has a negative relationship with the parameter of vendor 'Ann.Arbor.Speed' (my final question)
+
+2. Describe the data
+The data has 1 row of headers, 97 obeserving rows, and 35 variables. 
+The following is a description of the variables:
+
+'model' - bike model
+'category1' - category of bike models
+'category2' - sub-category of bike models under category1
+'frame' - the texture of the bike frame
+'price' - the price of each model, in $
+the bike vendor names (such as 'Albuquerque Cycles', 'Ann Arbor Speed', 'Austin Cruisers'..) - the parameter of each vendor by bike models (I am not quite sure what these variables represent, so I will just call them parameters of each model by vendor), it looks like these parameters has some kind of correlation or relationship with the model or more specifically, model price.
+
+At this point, I want to change the question to 'Does variable 'price' has a negative relationship with the parameter of vendor 'Ann.Arbor.Speed'?'
+
+3. Explore the data
+```{r}
+bike_vendor <- read.csv("C:/HU/Late Fall 2018/ANLY506/EDA Assignment/bikeVendors.csv")
+##
+summary(bike_vendor)
+## 
+str(bike_vendor)
+## take a look at the beginning of the dataset to have a good idea of what the dataset look like
+head(bike_vendor)
+## take a look at the end of the dataset to see if eveything is okay because some dataset has rows that are omitted at the end
+tail(bike_vendor)
+
+## Plot variable price on histogram
+hist(bike_vendor$price)
+
+## Get the column names
+names(bike_vendor)
+
+## check for missing values
+is.na(bike_vendor)
+```
+
+4. Visualization
+```{r}
+library(ggplot2)
+p <- ggplot(bike_vendor, aes(bike_vendor$price, bike_vendor$Ann.Arbor.Speed))
+p + geom_point(colour="dark green", size = 3)+
+  geom_smooth(method = "lm", se = FALSE)
+
+## we can see price and Ann.Arbor.Speed parameter has a negative relationship 
+
+relationship <-lm(price ~ Ann.Arbor.Speed, data = bike_vendor)
+relationship
+plot(relationship)
+abline(relationship, col = "green")
+```
+From the plots above, we can see that in the 1st plot, we can see a parabola-like pattern, which is not good enough.
+
+On normal Q-Q Plot, we can see at the end of the line, the plot deviates from the straight dashed line. This means the residual is not entirely normally distributed.
+
+On the Scale-location plot, it is good to see the line is almost horizontal and the points are spread equally on both side of the line.
+
+5. Report findings, provide answer to the question asked in the first step of EDA
+
+To answer the question, the variable 'price' has a negative relationship with the parameter of vendor 'Ann.Arbor.Speed' and the assumptions are tested.
